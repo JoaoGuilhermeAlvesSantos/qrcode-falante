@@ -1,0 +1,17 @@
+[
+  { "id": "carro", "pt": "Carro", "en": "Car" },
+  { "id": "cadeira", "pt": "Cadeira", "en": "Chair" },
+  { "id": "mesa", "pt": "Mesa", "en": "Table" },
+  { "id": "casa", "pt": "Casa", "en": "House" },
+  { "id": "agua", "pt": "Água", "en": "Water" },
+  { "id": "comida", "pt": "Comida", "en": "Food" },
+  { "id": "escola", "pt": "Escola", "en": "School" },
+  { "id": "livro", "pt": "Livro", "en": "Book" },
+  { "id": "cachorro", "pt": "Cachorro", "en": "Dog" },
+  { "id": "gato", "pt": "Gato", "en": "Cat" },
+  { "id": "banheiro", "pt": "Banheiro", "en": "Bathroom" },
+  { "id": "cama", "pt": "Cama", "en": "Bed" },
+  { "id": "janela", "pt": "Janela", "en": "Window" },
+  { "id": "porta", "pt": "Porta", "en": "Door" },
+  { "id": "telefone", "pt": "Telefone", "en": "Phone" }
+]
