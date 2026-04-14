@@ -1,11 +1,12 @@
-const CACHE_NAME = 'qrcode-falante-v1';
+const CACHE_NAME = 'qrcode-falante-v2';
 const ASSETS = [
   './',
   './index.html',
   './script.js',
   './data.json',
   './manifest.json',
-  './lib/html5-qrcode.min.js'
+  './lib/html5-qrcode.min.js',
+  './lib/qrcode.min.js'
 ];
 
 self.addEventListener('install', event => {

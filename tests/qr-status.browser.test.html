@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Status Browser Test</title>
+</head>
+<body>
+  <h1>QR Status Browser Test</h1>
+  <p>Abra o console do navegador para ver os resultados.</p>
+
+  <script src="../qr-status.js"></script>
+  <script>
+    (function () {
+      function assert(condition, message) {
+        if (!condition) {
+          throw new Error(message);
+        }
+      }
+
+      const baseDadosFake = [
+        { id: 'carro', pt: 'Carro', en: 'Car' },
+        { id: 'gato', pt: 'Gato', en: 'Cat' }
+      ];
+
+      try {
+        const utils = window.QrStatusUtils;
+        assert(utils, 'QrStatusUtils nao foi carregado.');
+
+        const normalized = utils.normalizeQrId('  Carro  ');
+        assert(normalized === 'carro', 'normalizeQrId falhou para "  Carro  ".');
+
+        const statusOk = utils.verificarStatusQr('CARRO', baseDadosFake);
+        assert(statusOk.ok === true, 'verificarStatusQr deveria aceitar CARRO.');
+        assert(statusOk.id === 'carro', 'id normalizado deveria ser carro.');
+        assert(statusOk.item && statusOk.item.id === 'carro', 'item encontrado deveria ser carro.');
+
+        const statusFail = utils.verificarStatusQr('inexistente', baseDadosFake);
+        assert(statusFail.ok === false, 'verificarStatusQr deveria rejeitar inexistente.');
+        assert(statusFail.item === null, 'item deveria ser null para inexistente.');
+
+        console.log('Teste de QR status (browser): OK.');
+      } catch (error) {
+        console.error('Teste de QR status (browser): FAIL.', error);
+      }
+    }());
+  </script>
+</body>
+</html>

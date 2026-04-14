@@ -6,19 +6,69 @@ let html5QrcodeScanner = null;
 let ultimoIdLido = null;
 let ultimoTempoLeitura = 0;
 const INTERVALO_MINIMO_MS = 3000;
+const BASE_DADOS_FALLBACK = [
+  { id: 'carro', pt: 'Carro', en: 'Car' },
+  { id: 'cadeira', pt: 'Cadeira', en: 'Chair' },
+  { id: 'mesa', pt: 'Mesa', en: 'Table' },
+  { id: 'casa', pt: 'Casa', en: 'House' },
+  { id: 'agua', pt: 'Agua', en: 'Water' },
+  { id: 'comida', pt: 'Comida', en: 'Food' },
+  { id: 'escola', pt: 'Escola', en: 'School' },
+  { id: 'livro', pt: 'Livro', en: 'Book' },
+  { id: 'cachorro', pt: 'Cachorro', en: 'Dog' },
+  { id: 'gato', pt: 'Gato', en: 'Cat' },
+  { id: 'banheiro', pt: 'Banheiro', en: 'Bathroom' },
+  { id: 'cama', pt: 'Cama', en: 'Bed' },
+  { id: 'janela', pt: 'Janela', en: 'Window' },
+  { id: 'porta', pt: 'Porta', en: 'Door' },
+  { id: 'telefone', pt: 'Telefone', en: 'Phone' }
+];
+
+function verificarStatusQr(decodedText) {
+  if (window.QrStatusUtils && typeof window.QrStatusUtils.verificarStatusQr === 'function') {
+    return window.QrStatusUtils.verificarStatusQr(decodedText, baseDados);
+  }
+
+  const id = String(decodedText || '').trim().toLowerCase();
+  const item = baseDados.find(i => i.id === id);
+  return {
+    ok: Boolean(item),
+    id,
+    item: item || null,
+    message: item
+      ? `QR funcionando para id "${id}".`
+      : `QR nao encontrado para id "${id || '(vazio)'}".`
+  };
+}
 
 // 1. Carregar dados
-fetch('./data.json')
-  .then(response => response.json())
-  .then(data => {
-    baseDados = data;
-    console.log(`Base de dados carregada: ${baseDados.length} itens.`);
+function carregarBaseDados() {
+  if (window.location.protocol === 'file:') {
+    baseDados = BASE_DADOS_FALLBACK;
+    console.log(`Base de dados local carregada: ${baseDados.length} itens.`);
     preencherListaItens();
-  })
-  .catch(err => {
-    console.error('Erro ao carregar data.json:', err);
-    mostrarMensagem('Erro ao carregar base de dados.', 'erro');
-  });
+    return;
+  }
+
+  fetch('./data.json')
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      baseDados = data;
+      console.log(`Base de dados carregada: ${baseDados.length} itens.`);
+      preencherListaItens();
+    })
+    .catch(err => {
+      console.error('Erro ao carregar data.json, usando base local:', err);
+      baseDados = BASE_DADOS_FALLBACK;
+      preencherListaItens();
+      mostrarMensagem('Usando base local de itens.', '');
+    });
+}
+
+carregarBaseDados();
 
 // 2. Função de Voz
 function falar(item) {
@@ -62,12 +112,81 @@ function preencherListaItens() {
   const lista = document.getElementById('lista-itens');
   if (!lista) return;
   lista.innerHTML = baseDados.map(item =>
-    `<div class="item-tag">
-      <strong>${item.pt}</strong>
-      ${item.en}
-      <span class="item-id">${item.id}</span>
+    `<div class="item-card">
+      <div class="item-info">
+        <strong>${item.pt}</strong>
+        <span class="item-en">${item.en}</span>
+        <span class="item-id">${item.id}</span>
+      </div>
+      <div class="item-actions">
+        <button class="item-action-btn item-action-play" type="button" data-item-id="${item.id}" data-action="play" aria-label="Ouvir ${item.pt}">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
+        <button class="item-action-btn item-action-download" type="button" data-item-id="${item.id}" data-action="download" aria-label="Baixar QR Code de ${item.pt}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 3v11" />
+            <path d="M8 10l4 4 4-4" />
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+      </div>
     </div>`
   ).join('');
+}
+
+function tocarItem(item) {
+  console.log(`[QR STATUS] OK: preview de audio para "${item.id}".`);
+  mostrarItem(item);
+  falar(item);
+}
+
+function baixarQrCode(item) {
+  if (!window.QRCode) {
+    console.error('[QR STATUS] FAIL: biblioteca de QR Code indisponivel.');
+    mostrarMensagem('Biblioteca de QR Code não carregou.', 'erro');
+    return;
+  }
+
+  const temp = document.createElement('div');
+  temp.style.position = 'fixed';
+  temp.style.left = '-9999px';
+  temp.style.top = '-9999px';
+  document.body.appendChild(temp);
+
+  try {
+    new QRCode(temp, {
+      text: item.id,
+      width: 512,
+      height: 512,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    const canvas = temp.querySelector('canvas');
+    const image = temp.querySelector('img');
+    const dataUrl = canvas ? canvas.toDataURL('image/png') : (image ? image.src : null);
+
+    if (!dataUrl) {
+      throw new Error('Não foi possível gerar imagem do QR Code.');
+    }
+
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `qrcode-${item.id}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    console.log(`[QR STATUS] OK: QR baixado para id "${item.id}".`);
+    mostrarMensagem(`QR Code de ${item.pt} baixado.`, '');
+  } catch (err) {
+    console.error(`[QR STATUS] FAIL: erro ao gerar QR para id "${item.id}".`, err);
+    console.error('Erro ao gerar QR Code:', err);
+    mostrarMensagem(`Erro ao gerar QR Code de ${item.pt}.`, 'erro');
+  } finally {
+    temp.remove();
+  }
 }
 
 // 4. Mostrar mensagem na UI
@@ -97,11 +216,13 @@ function onScanSuccess(decodedText) {
   ultimoIdLido = decodedText;
   ultimoTempoLeitura = agora;
 
-  const achado = baseDados.find(i => i.id === decodedText.trim().toLowerCase());
-  if (achado) {
-    mostrarItem(achado);
-    falar(achado);
+  const status = verificarStatusQr(decodedText);
+  if (status.ok) {
+    console.log(`[QR STATUS] OK: ${status.message}`);
+    mostrarItem(status.item);
+    falar(status.item);
   } else {
+    console.warn(`[QR STATUS] FAIL: ${status.message}`);
     mostrarMensagem(`Código não encontrado: "${decodedText}"`, 'nao-encontrado');
   }
 }
@@ -166,22 +287,48 @@ function pararScanner() {
   }
 }
 
-// 7. Registrar Service Worker para PWA
-if ('serviceWorker' in navigator) {
+// 7. Registrar Service Worker para PWA (somente em origem suportada)
+const ORIGEM_SUPORTA_SW =
+  window.location.protocol === 'https:' ||
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1';
+
+if ('serviceWorker' in navigator && ORIGEM_SUPORTA_SW) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('Service Worker registrado:', reg.scope))
       .catch(err => console.error('Erro ao registrar Service Worker:', err));
   });
+} else {
+  console.info('Service Worker desativado para esta origem.');
 }
 
 // 8. Inicialização da UI
 document.addEventListener('DOMContentLoaded', () => {
   const btnIniciar = document.getElementById('btn-iniciar');
   const btnParar = document.getElementById('btn-parar');
+  const listaItens = document.getElementById('lista-itens');
 
   if (btnIniciar) btnIniciar.addEventListener('click', iniciarScanner);
   if (btnParar) btnParar.addEventListener('click', pararScanner);
+  if (listaItens) {
+    listaItens.addEventListener('click', event => {
+      const botao = event.target.closest('button[data-item-id][data-action]');
+      if (!botao) return;
+
+      const item = baseDados.find(i => i.id === botao.dataset.itemId);
+      if (item) {
+        if (botao.dataset.action === 'play') {
+          tocarItem(item);
+        } else {
+          console.log(`[QR STATUS] OK: item valido para download "${item.id}".`);
+          baixarQrCode(item);
+        }
+      } else {
+        console.warn(`[QR STATUS] FAIL: item invalido para download "${botao.dataset.itemId}".`);
+      }
+    });
+  }
 
   mostrarMensagem('Pressione "Iniciar Scanner" para começar.', '');
 });

@@ -242,32 +242,89 @@
 
     #lista-itens {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 0.5rem;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.55rem;
       padding: 0.8rem 1rem 1rem;
     }
 
-    .item-tag {
+    .item-card {
       background: #0d0d1a;
       border: 1px solid #2a2a4a;
-      border-radius: 8px;
-      padding: 0.5rem 0.7rem;
-      font-size: 0.82rem;
-      text-align: center;
-      color: var(--text-muted);
+      border-radius: 10px;
+      padding: 0.55rem 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.55rem;
     }
 
-    .item-tag strong {
-      display: block;
+    .item-info {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .item-info strong {
       color: var(--text);
       font-size: 0.9rem;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .item-id {
+    .item-info .item-en {
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      line-height: 1.1;
+    }
+
+    .item-info .item-id {
       font-family: monospace;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       color: var(--accent);
-      opacity: 0.8;
+      opacity: 0.9;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .item-action-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      padding: 0;
+      background: #181832;
+      border: 1px solid #2f2f58;
+      color: var(--text);
+      box-shadow: none;
+    }
+
+    .item-action-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .item-action-btn:hover {
+      border-color: var(--accent);
+      background: #212144;
+    }
+
+    .item-action-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .item-action-play {
+      color: var(--success);
+    }
+
+    .item-action-download {
+      color: var(--accent);
     }
 
     footer {
@@ -362,6 +419,8 @@
   </footer>
 
   <script src="./lib/html5-qrcode.min.js"></script>
+  <script src="./lib/qrcode.min.js"></script>
+  <script src="./qr-status.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>
