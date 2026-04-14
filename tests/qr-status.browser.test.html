@@ -20,6 +20,7 @@
 
       const baseDadosFake = [
         { id: 'carro', pt: 'Carro', en: 'Car' },
+        { id: 'agua', pt: 'Agua', en: 'Water' },
         { id: 'gato', pt: 'Gato', en: 'Cat' }
       ];
 
@@ -34,6 +35,14 @@
         assert(statusOk.ok === true, 'verificarStatusQr deveria aceitar CARRO.');
         assert(statusOk.id === 'carro', 'id normalizado deveria ser carro.');
         assert(statusOk.item && statusOk.item.id === 'carro', 'item encontrado deveria ser carro.');
+
+        const statusPt = utils.verificarStatusQr('Água', baseDadosFake);
+        assert(statusPt.ok === true, 'verificarStatusQr deveria aceitar Agua com acento.');
+        assert(statusPt.item && statusPt.item.id === 'agua', 'nome PT deveria resolver para agua.');
+
+        const statusFuzzy = utils.verificarStatusQr('carroo', baseDadosFake);
+        assert(statusFuzzy.ok === true, 'verificarStatusQr deveria tolerar pequeno erro.');
+        assert(statusFuzzy.item && statusFuzzy.item.id === 'carro', 'fuzzy deveria resolver para carro.');
 
         const statusFail = utils.verificarStatusQr('inexistente', baseDadosFake);
         assert(statusFail.ok === false, 'verificarStatusQr deveria rejeitar inexistente.');

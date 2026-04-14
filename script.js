@@ -30,15 +30,118 @@ function verificarStatusQr(decodedText) {
   }
 
   const id = String(decodedText || '').trim().toLowerCase();
-  const item = baseDados.find(i => i.id === id);
+  const item = baseDados.find(i => i.id === id || i.pt.toLowerCase() === id || i.en.toLowerCase() === id);
   return {
     ok: Boolean(item),
     id,
     item: item || null,
+    strategy: item ? 'exact' : 'none',
     message: item
-      ? `QR funcionando para id "${id}".`
+      ? `QR funcionando para entrada "${id}" via exact.`
       : `QR nao encontrado para id "${id || '(vazio)'}".`
   };
+}
+
+function getFormatosSuportados() {
+  if (typeof Html5QrcodeSupportedFormats === 'undefined') return undefined;
+  return [Html5QrcodeSupportedFormats.QR_CODE];
+}
+
+function getConfigScanner() {
+  const formatos = getFormatosSuportados();
+  const config = {
+    fps: 12,
+    disableFlip: false
+  };
+
+  if (formatos) {
+    config.formatsToSupport = formatos;
+  }
+
+  return config;
+}
+
+async function garantirScanner() {
+  if (!html5QrcodeScanner) {
+    html5QrcodeScanner = new Html5Qrcode('leitor');
+  }
+
+  return html5QrcodeScanner;
+}
+
+async function limparScanner() {
+  if (!html5QrcodeScanner) return;
+
+  try {
+    if (scannerAtivo) {
+      await html5QrcodeScanner.stop();
+      scannerAtivo = false;
+    }
+  } catch (err) {
+    console.warn('Erro ao encerrar scanner ativo:', err);
+  }
+
+  try {
+    await html5QrcodeScanner.clear();
+  } catch (err) {
+    console.warn('Erro ao limpar scanner:', err);
+  }
+
+  html5QrcodeScanner = null;
+}
+
+async function obterCameraPreferida() {
+  if (typeof Html5Qrcode.getCameras !== 'function') {
+    return { facingMode: 'environment' };
+  }
+
+  try {
+    const cameras = await Html5Qrcode.getCameras();
+    if (!cameras || cameras.length === 0) {
+      return { facingMode: 'environment' };
+    }
+
+    const traseira = cameras.find(camera => /back|rear|traseira|environment/i.test(`${camera.label} ${camera.id}`));
+    return traseira ? traseira.id : cameras[0].id;
+  } catch (err) {
+    console.warn('Nao foi possivel listar cameras, usando fallback:', err);
+    return { facingMode: 'environment' };
+  }
+}
+
+function aplicarEstadoScannerAtivo(ativo) {
+  const btnIniciar = document.getElementById('btn-iniciar');
+  const btnParar = document.getElementById('btn-parar');
+  const leitorEl = document.getElementById('leitor');
+  const leitorWrapper = document.getElementById('leitor-wrapper');
+
+  if (btnIniciar) btnIniciar.style.display = ativo ? 'none' : 'inline-flex';
+  if (btnParar) btnParar.style.display = ativo ? 'inline-flex' : 'none';
+  if (leitorEl) leitorEl.classList.toggle('ativo', ativo);
+  if (leitorWrapper) leitorWrapper.classList.toggle('scanner-ativo', ativo);
+}
+
+async function lerQrDeImagem(file) {
+  if (!file) return;
+
+  await limparScanner();
+
+  try {
+    const leitorWrapper = document.getElementById('leitor-wrapper');
+    if (leitorWrapper) leitorWrapper.classList.add('scanner-ativo');
+
+    const scannerImagem = await garantirScanner();
+    const decodedText = await scannerImagem.scanFile(file, true);
+    console.log(`[QR STATUS] OK: QR lido por imagem com valor bruto "${decodedText}".`);
+    onScanSuccess(decodedText);
+    mostrarMensagem('QR lido a partir da imagem.', 'encontrado');
+  } catch (err) {
+    console.error('[QR STATUS] FAIL: nao foi possivel ler o QR da imagem.', err);
+    mostrarMensagem('Nao foi possivel ler o QR desta imagem.', 'erro');
+  } finally {
+    await limparScanner();
+    aplicarEstadoScannerAtivo(false);
+  }
 }
 
 // 1. Carregar dados
@@ -158,9 +261,11 @@ function baixarQrCode(item) {
   try {
     new QRCode(temp, {
       text: item.id,
-      width: 512,
-      height: 512,
-      correctLevel: QRCode.CorrectLevel.M
+      width: 768,
+      height: 768,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
     });
 
     const canvas = temp.querySelector('canvas');
@@ -232,58 +337,54 @@ function onScanError(errorMessage) {
 }
 
 // 6. Controle do Scanner
-function iniciarScanner() {
-  const btnIniciar = document.getElementById('btn-iniciar');
-  const btnParar = document.getElementById('btn-parar');
-  const leitorEl = document.getElementById('leitor');
+async function iniciarScanner() {
+  try {
+    await limparScanner();
+    const scanner = await garantirScanner();
+    const cameraPreferida = await obterCameraPreferida();
 
-  if (html5QrcodeScanner) {
-    html5QrcodeScanner.clear().catch(err => console.warn('Erro ao limpar scanner anterior:', err));
-    html5QrcodeScanner = null;
-  }
+    await scanner.start(
+      cameraPreferida,
+      getConfigScanner(),
+      onScanSuccess,
+      onScanError
+    );
 
-  html5QrcodeScanner = new Html5Qrcode('leitor');
-
-  const config = {
-    fps: 10,
-    qrbox: { width: 250, height: 250 },
-    aspectRatio: 1.0
-  };
-
-  html5QrcodeScanner.start(
-    { facingMode: 'environment' },
-    config,
-    onScanSuccess,
-    onScanError
-  ).then(() => {
     scannerAtivo = true;
-    btnIniciar.style.display = 'none';
-    btnParar.style.display = 'inline-flex';
-    leitorEl.classList.add('ativo');
+    aplicarEstadoScannerAtivo(true);
     mostrarMensagem('Aponte a câmera para um QR Code.', '');
-  }).catch(err => {
-    console.error('Erro ao iniciar câmera:', err);
-    mostrarMensagem('Não foi possível acessar a câmera. Verifique as permissões.', 'erro');
-  });
+  } catch (err) {
+    console.warn('Falha na camera preferida, tentando camera padrao:', err);
+
+    try {
+      await limparScanner();
+      const scanner = await garantirScanner();
+      await scanner.start(
+        { facingMode: 'environment' },
+        getConfigScanner(),
+        onScanSuccess,
+        onScanError
+      );
+
+      scannerAtivo = true;
+      aplicarEstadoScannerAtivo(true);
+      mostrarMensagem('Aponte a câmera para um QR Code.', '');
+    } catch (fallbackErr) {
+      console.error('Erro ao iniciar câmera:', fallbackErr);
+      aplicarEstadoScannerAtivo(false);
+      mostrarMensagem('Nao foi possivel acessar a camera. Tente o botao "Ler Imagem QR".', 'erro');
+    }
+  }
 }
 
-function pararScanner() {
-  const btnIniciar = document.getElementById('btn-iniciar');
-  const btnParar = document.getElementById('btn-parar');
-  const leitorEl = document.getElementById('leitor');
-
-  if (html5QrcodeScanner && scannerAtivo) {
-    html5QrcodeScanner.stop().then(() => {
-      html5QrcodeScanner.clear();
-      html5QrcodeScanner = null;
-      scannerAtivo = false;
-      btnIniciar.style.display = 'inline-flex';
-      btnParar.style.display = 'none';
-      leitorEl.classList.remove('ativo');
-      mostrarMensagem('Scanner parado.', '');
-    }).catch(err => {
-      console.error('Erro ao parar câmera:', err);
-    });
+async function pararScanner() {
+  try {
+    await limparScanner();
+  } catch (err) {
+    console.error('Erro ao parar câmera:', err);
+  } finally {
+    aplicarEstadoScannerAtivo(false);
+    mostrarMensagem('Scanner parado.', '');
   }
 }
 
@@ -307,10 +408,20 @@ if ('serviceWorker' in navigator && ORIGEM_SUPORTA_SW) {
 document.addEventListener('DOMContentLoaded', () => {
   const btnIniciar = document.getElementById('btn-iniciar');
   const btnParar = document.getElementById('btn-parar');
+  const btnImagem = document.getElementById('btn-imagem');
+  const inputImagemQr = document.getElementById('input-imagem-qr');
   const listaItens = document.getElementById('lista-itens');
 
   if (btnIniciar) btnIniciar.addEventListener('click', iniciarScanner);
   if (btnParar) btnParar.addEventListener('click', pararScanner);
+  if (btnImagem && inputImagemQr) {
+    btnImagem.addEventListener('click', () => inputImagemQr.click());
+    inputImagemQr.addEventListener('change', async event => {
+      const [file] = event.target.files || [];
+      await lerQrDeImagem(file);
+      event.target.value = '';
+    });
+  }
   if (listaItens) {
     listaItens.addEventListener('click', event => {
       const botao = event.target.closest('button[data-item-id][data-action]');

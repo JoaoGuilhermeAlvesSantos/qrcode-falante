@@ -86,6 +86,8 @@
 
     #leitor {
       width: 100%;
+      position: relative;
+      z-index: 1;
     }
 
     #leitor.ativo {
@@ -95,12 +97,21 @@
     /* Placeholder quando câmera está inativa */
     #camera-placeholder {
       display: flex;
+      position: absolute;
+      inset: 0;
       flex-direction: column;
+      justify-content: center;
       align-items: center;
       gap: 0.8rem;
       color: var(--text-muted);
       padding: 2rem;
       text-align: center;
+      background: #0d0d1a;
+      pointer-events: none;
+    }
+
+    #leitor-wrapper.scanner-ativo #camera-placeholder {
+      display: none;
     }
 
     #camera-placeholder svg {
@@ -205,6 +216,30 @@
 
     #btn-parar:hover {
       background: #3a3a5a;
+    }
+
+    #btn-imagem {
+      background: #243b55;
+      color: var(--text);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    }
+
+    #btn-imagem:hover {
+      background: #2d4b6d;
+    }
+
+    .ajuda-scanner {
+      background: rgba(36, 59, 85, 0.28);
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .ajuda-scanner strong {
+      color: var(--text);
     }
 
     /* Lista de itens disponíveis */
@@ -387,12 +422,26 @@
         </svg>
         Iniciar Scanner
       </button>
+      <button id="btn-imagem" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Ler Imagem QR
+      </button>
       <button id="btn-parar" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <rect x="6" y="6" width="12" height="12" rx="1"/>
         </svg>
         Parar
       </button>
+    </div>
+
+    <input id="input-imagem-qr" type="file" accept="image/*" hidden />
+
+    <div class="ajuda-scanner">
+      <strong>Dica:</strong> se a câmera não reconhecer, toque em <strong>Ler Imagem QR</strong> e selecione uma foto do código. O scanner agora tenta câmera traseira, usa a área inteira da imagem e aceita pequenas variações no texto lido.
     </div>
 
     <!-- Lista de itens disponíveis -->
